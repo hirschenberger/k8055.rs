@@ -33,14 +33,13 @@ bitflags!(
 enum Packet {
     Reset,
     SetAnalogDigital(u8, u8, u8),
-    Status(u8)
+    Status(u8, u8, u8, u8)
 }
 
 
 pub struct K8055 {
     dev: usb::Device,
     hd: Option<usb::DeviceHandle>
-
 }
 
 impl K8055 {
@@ -62,7 +61,7 @@ impl K8055 {
               self.hd = Some(h);
               return true
           }
-          Err(e) => return false
+          Err(_) => return false
       }
     }
     
@@ -78,14 +77,7 @@ impl K8055 {
     fn write(&mut self, p: &Packet) -> bool {
         match self.hd {
           Some(ref hd) => {
-              unsafe {
-                  if libusb::libusb_kernel_driver_active(hd.ptr(), 0) == 1 {
-                      if libusb::libusb_detach_kernel_driver(hd.ptr(), 0) != 0 {
-                          fail!("Can't detach usb kernel driver");
-                      }
-                  }
-              }
-              hd.claim_interface(0u);
+              K8055::detach_and_claim(hd);
               let data = match K8055::encode(p) {
                   Some(d) => d,
                   None => return false
@@ -100,6 +92,19 @@ impl K8055 {
         }
     }
 
+    fn read(&mut self) -> Option<Packet> {
+        match self.hd {
+          Some(ref hd) => {
+            K8055::detach_and_claim(hd);
+            match hd.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, 8) {
+              Ok(data) => K8055::decode(data.as_slice()),
+              Err(_) => None
+            }
+          }
+          None => None
+        }
+    }
+
     fn encode(p: &Packet) -> Option<[u8, ..8]> {
       match *p {
           Reset => Some([0u8, ..8]),
@@ -109,9 +114,22 @@ impl K8055 {
       }
     }
 
-    fn decode(d: &[u8, ..8]) -> Option<Packet> {
-        //let bytes: Vec<u8> = try!(Decodable::decode(d));
-        Some(Status(0u8))
+    fn decode(d: &[u8]) -> Option<Packet> {
+       match d {
+          [dig, st, ana1, ana2, _, _, _, _] => Some(Status(dig, st, ana1, ana2)),
+          _ => None
+       }
+    }
+
+    fn detach_and_claim(hd: &usb::DeviceHandle ) {
+      unsafe {
+        if libusb::libusb_kernel_driver_active(hd.ptr(), 0) == 1 {
+          if libusb::libusb_detach_kernel_driver(hd.ptr(), 0) != 0 {
+            fail!("Can't detach usb kernel driver");
+          }
+        }
+      }
+      hd.claim_interface(0u);
     }
 
 }
@@ -129,11 +147,21 @@ fn find_and_open() {
   let mut k = k.unwrap();
   assert!(k.open());
   for i in range(0u8, 255) {
-    assert!(k.write(&SetAnalogDigital(i, 0u8, 0u8)));
-    sleep(100);
+    assert!(k.write(&SetAnalogDigital(i, i, 255 - i)));
+    sleep(10);
   }
 
   assert!(k.write(&SetAnalogDigital(0u8, 0u8, 0u8)));
+
+
+  for i in range(0i, 100) {
+    match k.read() {
+        Some(Status(dig, _, _, _)) => assert_eq!(dig, 0u8),
+        _                          => fail!("Err")
+
+    }
+    sleep(10);
+  }
 }
          
 

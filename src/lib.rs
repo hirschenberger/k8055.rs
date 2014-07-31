@@ -29,6 +29,18 @@ bitflags!(
   }
 )
 
+bitflags!(
+    flags CardAddress: uint {
+        static Card1 = 0x5500,
+        static Card2 = 0x5501,
+        static Card3 = 0x5502,
+        static Card4 = 0x5503,
+        static CardAny = 0x0
+    }
+)
+
+static VendorId: uint = 0x10cfu;
+
 #[deriving(Show)]
 enum Packet {
     Reset,
@@ -44,8 +56,17 @@ pub struct K8055 {
 
 impl K8055 {
     pub fn new() -> Option<K8055> {
+        K8055::new_addr(CardAny)
+    }
+
+    pub fn new_addr(addr: CardAddress) -> Option<K8055> {
         let c = usb::Context::new();
-        let d = K8055::find_k8055(&c);
+        let d = if addr == CardAny {
+            K8055::find_any_k8055(&c)
+        } else {
+            c.find_by_vid_pid(VendorId, addr.bits)
+        };
+        
         if d.is_some() { 
             return Some(K8055{ dev: d.unwrap(), hd: None }) 
         } else {
@@ -65,10 +86,9 @@ impl K8055 {
       }
     }
     
-    fn find_k8055(c: &usb::Context) -> Option<usb::Device> {
-        let vid = 0x10cfu;
-        for pid in range_inclusive(0x5500, 0x5503) {
-          let d = c.find_by_vid_pid(vid, pid);
+    fn find_any_k8055(c: &usb::Context) -> Option<usb::Device> {
+        for pid in range_inclusive(Card1.bits, Card4.bits) {
+          let d = c.find_by_vid_pid(VendorId, pid);
           if d.is_some() { return d }
         }
         None
@@ -162,6 +182,10 @@ fn find_and_open() {
     }
     sleep(10);
   }
+
+  assert!(K8055::new_addr(Card2).is_none());
+  assert!(K8055::new_addr(Card3).is_none());
+  assert!(K8055::new_addr(Card4).is_none());
 }
          
 

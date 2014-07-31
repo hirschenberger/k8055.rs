@@ -1,30 +1,33 @@
 #![crate_type = "lib"]
+extern crate libc;
 extern crate usb;
 extern crate serialize;
 
-use serialize::{Encoder, Encodable, Decoder, Decodable};
+use std::io::timer::sleep;
 use std::iter::range_inclusive;
 use std::fmt::{Show, Formatter, FormatError};
 use usb::libusb;
 
 
-#[deriving(Show)]
-pub enum AnalogChannel {
-    A1,
-    A2
-}
+bitflags!(
+  flags AnalogChannel: u8 {
+      static A1 = 1,
+      static A2 = 2
+  }
+)
 
-#[deriving(Show)]
-pub enum DigitalChannel {
-    D1 = 1,
-    D2 = 2,
-    D3 = 4,
-    D4 = 8,
-    D5 = 16,
-    D6 = 32,
-    D7 = 64,
-    D8 = 128
-}
+bitflags!(
+  flags DigitalChannel: u8 { 
+    static D1 = 1,
+    static D2 = 2,
+    static D3 = 4,
+    static D4 = 8,
+    static D5 = 16,
+    static D6 = 32,
+    static D7 = 64,
+    static D8 = 128
+  }
+)
 
 #[deriving(Show)]
 enum Packet {
@@ -33,23 +36,6 @@ enum Packet {
     Status(u8)
 }
 
-impl<E: Encoder<S>, S> Encodable<E, S> for Packet {
-  fn encode(&self, e: &mut E) -> Result<(), S> {
-      match *self {
-          Reset => [0u8, ..8].encode(e),
-          SetAnalogDigital(dig, ana1, ana2) => [5u8, dig, ana1, ana2, 
-                                                0u8, 0u8, 0u8, 0u8].encode(e),
-          _ => fail!("Unknown cmd")
-      }
-  }
-}
-
-impl<E, D: Decoder<E>> Decodable<D, E> for Packet {
-    fn decode(d: &mut D) -> Result<Packet, E> {
-        let bytes: Vec<u8> = try!(Decodable::decode(d));
-        Ok(Status(0u8))
-    }
-}
 
 pub struct K8055 {
     dev: usb::Device,
@@ -89,6 +75,45 @@ impl K8055 {
         None
     }
 
+    fn write(&mut self, p: &Packet) -> bool {
+        match self.hd {
+          Some(ref hd) => {
+              unsafe {
+                  if libusb::libusb_kernel_driver_active(hd.ptr(), 0) == 1 {
+                      if libusb::libusb_detach_kernel_driver(hd.ptr(), 0) != 0 {
+                          fail!("Can't detach usb kernel driver");
+                      }
+                  }
+              }
+              hd.claim_interface(0u);
+              let data = match K8055::encode(p) {
+                  Some(d) => d,
+                  None => return false
+              };
+              
+              match hd.write(0x1, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, data) {
+                  Ok(_) => return true,
+                  Err(_) => return false
+              }
+          }
+          None => return false
+        }
+    }
+
+    fn encode(p: &Packet) -> Option<[u8, ..8]> {
+      match *p {
+          Reset => Some([0u8, ..8]),
+          SetAnalogDigital(dig, ana1, ana2) => Some([5u8, dig, ana1, ana2, 
+                                                     0u8, 0u8, 0u8, 0u8]),
+          _ => None
+      }
+    }
+
+    fn decode(d: &[u8, ..8]) -> Option<Packet> {
+        //let bytes: Vec<u8> = try!(Decodable::decode(d));
+        Some(Status(0u8))
+    }
+
 }
 
 impl Show for K8055 {
@@ -103,6 +128,12 @@ fn find_and_open() {
   assert!(k.is_some());
   let mut k = k.unwrap();
   assert!(k.open());
+  for i in range(0u8, 255) {
+    assert!(k.write(&SetAnalogDigital(i, 0u8, 0u8)));
+    sleep(100);
+  }
+
+  assert!(k.write(&SetAnalogDigital(0u8, 0u8, 0u8)));
 }
          
 

@@ -117,6 +117,20 @@ impl K8055 {
         DigitalChannel::from_bits(self.state.dig).unwrap() & d
     }
 
+    pub fn read_digital_in(&mut self) -> Option<DigitalChannel> {
+        match self.read() {
+            Some(Status(dig, _, _, _)) => Some(DigitalChannel::from_bits(dig).unwrap()),
+            _ => None
+        }
+    }
+
+    pub fn read_digital_in_mask(&mut self, mask: DigitalChannel) -> Option<DigitalChannel> {
+        match self.read_digital_in() {
+            Some(c) => Some(c & mask),
+            _ => None
+        }
+    }
+
 // private 
 
     fn find_any_k8055(c: &usb::Context) -> Option<usb::Device> {

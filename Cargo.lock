@@ -1,0 +1,12 @@
+[root]
+name = "k8055"
+version = "0.0.1"
+dependencies = [
+ "usb 0.1.0 (git+https://github.com/kevinmehall/rust-usb#cd65d962b38b537cbaa3408ab93687823c40ab12)",
+]
+
+[[package]]
+name = "usb"
+version = "0.1.0"
+source = "git+https://github.com/kevinmehall/rust-usb#cd65d962b38b537cbaa3408ab93687823c40ab12"
+

@@ -3,19 +3,16 @@ extern crate libc;
 extern crate usb;
 extern crate serialize;
 
-use std::io::timer::sleep;
 use std::iter::range_inclusive;
 use std::fmt::{Show, Formatter, FormatError};
 use std::default::Default;
 use usb::libusb;
 
-
-bitflags!(
-  flags AnalogChannel: u8 {
-      static A1 = 1,
-      static A2 = 2
-  }
-)
+#[deriving(PartialEq, PartialOrd, Show)]
+pub enum AnalogChannel {
+      A1(u8),
+      A2(u8)
+}
 
 bitflags!(
   flags DigitalChannel: u8 { 
@@ -100,6 +97,7 @@ impl K8055 {
         self.write(&SetAnalogDigital(0u8, 0u8, 0u8))
     }
 
+// digital    
     pub fn write_digital_out(&mut self, d: DigitalChannel) -> bool {
         let p = &SetAnalogDigital(d.bits, self.state.ana1, self.state.ana2);
         self.write(p)
@@ -127,6 +125,37 @@ impl K8055 {
     pub fn read_digital_in_mask(&mut self, mask: DigitalChannel) -> Option<DigitalChannel> {
         match self.read_digital_in() {
             Some(c) => Some(c & mask),
+            _ => None
+        }
+    }
+
+// analog
+    pub fn write_analog_out(&mut self, a: AnalogChannel) -> bool {
+      let p = match a {
+          A1(v) => SetAnalogDigital(self.state.dig, v, self.state.ana2),
+          A2(v) => SetAnalogDigital(self.state.dig, self.state.ana1, v)
+      };
+      self.write(&p)
+    }
+
+    pub fn get_analog_out1(&mut self) -> AnalogChannel {
+        A1(self.state.ana1)
+    }
+
+    pub fn get_analog_out2(&mut self) -> AnalogChannel {
+        A2(self.state.ana2)
+    }
+
+    pub fn read_analog_in1(&mut self) -> Option<AnalogChannel> {
+        match self.read() {
+            Some(Status(_, _, a1, _)) => Some(A1(a1)),
+            _ => None
+        }
+    }
+    
+    pub fn read_analog_in2(&mut self) -> Option<AnalogChannel> {
+        match self.read() {
+            Some(Status(_, _, _, a2)) => Some(A2(a2)),
             _ => None
         }
     }
@@ -216,6 +245,7 @@ impl Show for K8055 {
     }
 }
 
+
 #[test()]
 fn find_and_open() {
   let k = K8055::new();
@@ -229,6 +259,8 @@ fn find_and_open() {
 
 #[test()]
 fn write_and_read_digital() {
+  use std::io::timer::sleep;
+
   let k = K8055::new();
   assert!(k.is_some());
   let mut k = k.unwrap();
@@ -245,6 +277,26 @@ fn write_and_read_digital() {
   assert!(k.write_digital_out_mask(D1 | D2 | D3, D2));
   assert!(k.get_digital_out() == D2);
   assert!(k.reset());
+  sleep(1000);
+}
+
+#[test()]
+fn write_and_read_analog() {
+  use std::io::timer::sleep;
+
+  let k = K8055::new();
+  assert!(k.is_some());
+  let mut k = k.unwrap();
+  assert!(k.open());
+  assert!(k.get_analog_out1() == A1(0u8));
+  assert!(k.get_analog_out2() == A2(0u8));
+  for i in range(0u8, 255) {
+    assert!(k.write_analog_out(A1(i)));
+    assert!(k.write_analog_out(A2(255-i)));
+    sleep(10);
+  }
+  assert!(k.reset());
+  sleep(1000);
 }
          
 

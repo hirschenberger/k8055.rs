@@ -1,3 +1,25 @@
+//  K8055.rs is a library for controlling the Vellemann K8055 USB IO card from rust.
+//  Copyright (C) 2014 Falco Hirschenberger <falco.hirschenberger@gmail.com>
+//
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation; either version 2 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License along
+//  with this program; if not, write to the Free Software Foundation, Inc.,
+//  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+//! Driver library for controlling the *Vellemann K8055(N)* USB digital and analog IO-cards.
+//!
+//! See the Vellemann [Homepage](http://www.velleman.eu/products/view/?id=351346) for the 
+//! hardware specification.
+
 #![crate_type = "lib"]
 extern crate libc;
 extern crate usb;
@@ -8,6 +30,7 @@ use std::fmt::{Show, Formatter, FormatError};
 use std::default::Default;
 use usb::libusb;
 
+/// Analog values in the range (0-255).
 #[deriving(PartialEq, PartialOrd, Show)]
 pub enum AnalogChannel {
       A1(u8),
@@ -15,8 +38,18 @@ pub enum AnalogChannel {
 }
 
 bitflags!(
+#[doc = "
+The digital channel values.
+
+Can be combined with bitoperations.
+    
+    let dc = k8055::D1 & k8055::D2 & k8055::D3;
+
+See the bitflags documentation for more information.
+"]
   flags DigitalChannel: u8 { 
-    static Zero = 0,
+#[doc = "All flags set to `off`"]        
+    static DZero = 0,
     static D1 = 1,
     static D2 = 2,
     static D3 = 4,
@@ -25,16 +58,27 @@ bitflags!(
     static D6 = 32,
     static D7 = 64,
     static D8 = 128,
-    static All = 255
+#[doc = "All flags set to `on`"]        
+    static DAll = 255
   }
 )
 
 bitflags!(
+#[doc = "
+Adresses of the different cards that can be controlled.
+
+See the jumper setting on your card for the correct address.
+"]
     flags CardAddress: uint {
+#[doc = "Use card `0x5500` (see jumper settings)"]        
         static Card1 = 0x5500,
+#[doc = "Use card `0x5501` (see jumper settings)"]        
         static Card2 = 0x5501,
+#[doc = "Use card `0x5502` (see jumper settings)"]        
         static Card3 = 0x5502,
+#[doc = "Use card `0x5503` (see jumper settings)"]        
         static Card4 = 0x5503,
+#[doc = "Automatically selects the first card found on the system"]        
         static CardAny = 0x0
     }
 )
@@ -55,6 +99,7 @@ struct State {
     ana2: u8
 }
 
+/// Object controlling one Vellemann K8055 card.
 pub struct K8055 {
     dev: usb::Device,
     hd: Option<usb::DeviceHandle>,
@@ -62,10 +107,17 @@ pub struct K8055 {
 }
 
 impl K8055 {
+    /// Create a new K8055 instance with the first card found on the system.
+    ///
+    /// May return `None` if no card was found connected to the system.
     pub fn new() -> Option<K8055> {
         K8055::new_addr(CardAny)
     }
 
+    /// Create a new K8055 instance with a specific card address.
+    ///
+    /// See the hardware jumpers on the card for your card's address. May return `None` if no card
+    /// with the address `addr` can be found connected to the system.
     pub fn new_addr(addr: CardAddress) -> Option<K8055> {
         let c = usb::Context::new();
         let d = if addr == CardAny {
@@ -81,6 +133,10 @@ impl K8055 {
         }
     }
 
+    /// Open the device for starting IO operations.
+    ///
+    /// Returns `true` if the device was successfully opened or is already open. Returns `false`
+    /// if the device can't be opened.
     pub fn open(&mut self) -> bool {
       // device already open
       if self.hd.is_some() { return true }
@@ -92,29 +148,43 @@ impl K8055 {
           Err(_) => return false
       }
     }
-    
+   
+    /// Set all analog and digital values to zero.
     pub fn reset(&mut self) -> bool {
         self.write(&SetAnalogDigital(0u8, 0u8, 0u8))
     }
 
 // digital    
+
+    /// Write the digital value `d` to the outports. 
+    ///
+    /// Leaves the analog values untouched. Returns `false` on failure.
     pub fn write_digital_out(&mut self, d: DigitalChannel) -> bool {
         let p = &SetAnalogDigital(d.bits, self.state.ana1, self.state.ana2);
         self.write(p)
     }
 
+    /// Write the masked digital value `d` to the outports. 
+    ///
+    /// Masks `d` with `mask` to only affect bits which are `on` in the mask.
+    /// Leaves the analog values untouched. Returns `false` on failure.
     pub fn write_digital_out_mask(&mut self, d: DigitalChannel, mask: DigitalChannel) -> bool {
         self.write_digital_out(d & mask)
     }
 
+    /// Return the bits that are currently set on the digital out channel.
     pub fn get_digital_out(&mut self) -> DigitalChannel {
         DigitalChannel::from_bits(self.state.dig).unwrap()
     }
    
+    /// Return the bits that are currently set on the digital out channel, masked with `mask`.
     pub fn get_digital_out_mask(&mut self, d: DigitalChannel) -> DigitalChannel {
         DigitalChannel::from_bits(self.state.dig).unwrap() & d
     }
 
+    /// Read the digital in channel.
+    ///
+    /// Returns `None` on failure
     pub fn read_digital_in(&mut self) -> Option<DigitalChannel> {
         match self.read() {
             Some(Status(dig, _, _, _)) => Some(DigitalChannel::from_bits(dig).unwrap()),
@@ -122,6 +192,9 @@ impl K8055 {
         }
     }
 
+    /// Read the digital in channel masked with `mask`.
+    ///
+    /// Returns `None` on failure
     pub fn read_digital_in_mask(&mut self, mask: DigitalChannel) -> Option<DigitalChannel> {
         match self.read_digital_in() {
             Some(c) => Some(c & mask),
@@ -130,6 +203,9 @@ impl K8055 {
     }
 
 // analog
+    /// Write the analog value `a` to the given outport. 
+    ///
+    /// Leaves the digital values untouched. Returns `false` on failure.
     pub fn write_analog_out(&mut self, a: AnalogChannel) -> bool {
       let p = match a {
           A1(v) => SetAnalogDigital(self.state.dig, v, self.state.ana2),
@@ -138,14 +214,19 @@ impl K8055 {
       self.write(&p)
     }
 
+    /// Return the analog channel 1 out value
     pub fn get_analog_out1(&mut self) -> AnalogChannel {
         A1(self.state.ana1)
     }
 
+    /// Return the analog channel 2 out value
     pub fn get_analog_out2(&mut self) -> AnalogChannel {
         A2(self.state.ana2)
     }
 
+    /// Read the analog channel 1 input value.
+    ///
+    /// Returns `None` on failure.
     pub fn read_analog_in1(&mut self) -> Option<AnalogChannel> {
         match self.read() {
             Some(Status(_, _, a1, _)) => Some(A1(a1)),
@@ -153,6 +234,9 @@ impl K8055 {
         }
     }
     
+    /// Read the analog channel 2 input value.
+    ///
+    /// Returns `None` on failure.
     pub fn read_analog_in2(&mut self) -> Option<AnalogChannel> {
         match self.read() {
             Some(Status(_, _, _, a2)) => Some(A2(a2)),
@@ -161,7 +245,6 @@ impl K8055 {
     }
 
 // private 
-
     fn find_any_k8055(c: &usb::Context) -> Option<usb::Device> {
         for pid in range_inclusive(Card1.bits, Card4.bits) {
           let d = c.find_by_vid_pid(VendorId, pid);
@@ -265,14 +348,14 @@ fn write_and_read_digital() {
   assert!(k.is_some());
   let mut k = k.unwrap();
   assert!(k.open());
-  assert!(k.get_digital_out() == Zero);
+  assert!(k.get_digital_out() == DZero);
   for i in range(0u, 8) {
     assert!(k.write_digital_out(DigitalChannel::from_bits(1u8<<i).unwrap()));
     assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8<<i).unwrap());
     sleep(100);
   }
   assert!(k.reset());
-  assert!(k.get_digital_out() == Zero);
+  assert!(k.get_digital_out() == DZero);
 
   assert!(k.write_digital_out_mask(D1 | D2 | D3, D2));
   assert!(k.get_digital_out() == D2);

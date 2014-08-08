@@ -9,6 +9,6 @@ install:
   - sudo apt-get install -qq rust-nightly cargo
 script:
   - cargo build
-  - cargo doc
+  - rustdoc -L target/deps src/k8055.rs
 after_script:
   - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh    

@@ -4,7 +4,7 @@ name = "k8055"
 version = "0.0.1"
 authors = ["hirschen <falco.hirschenberger@itwm.fraunhofer.de>"]
 
-[[lib]]
+[lib]
 
 name = "k8055"
 

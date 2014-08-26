@@ -1,12 +1,7 @@
+language: rust
 env:
   global:
     - secure: LrKOXMj+T3fZ6v7o6VkS2wUeHXeqRF5OX00/WrUOPrUoK9RoTlNBPIgShsf1PMcCyVQhqtzVRJkTh/0SeZMmdfXUsO9fNiffqxDhjOdGUIHWrhIzFFlIjEvsbJYq8D+353B90ZzWajSu5uz9zsnytBxj4FDjIRXOi2tYt+jmmyY=
-before_install:
-  - sudo add-apt-repository --yes ppa:hansjorg/rust
-  - sudo add-apt-repository --yes ppa:cmrx64/cargo
-  - sudo apt-get update -qq
-install:
-  - sudo apt-get install -qq rust-nightly cargo
 script:
   - cargo build
   - rustdoc -L target/deps src/k8055.rs

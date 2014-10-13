@@ -17,7 +17,7 @@
 
 //! Driver library for controlling the *Vellemann K8055(N)* USB digital and analog IO-cards.
 //!
-//! See the Vellemann [Homepage](http://www.velleman.eu/products/view/?id=351346) for the 
+//! See the Vellemann [Homepage](http://www.velleman.eu/products/view/?id=351346) for the
 //! hardware specification.
 
 #![crate_type = "lib"]
@@ -42,14 +42,14 @@ bitflags!(
 The digital channel values.
 
 Can be combined with bitoperations.
-    
+
     let dc = k8055::D1 & k8055::D2 & k8055::D3;
 
 See the bitflags documentation for more information.
 "]
-  flags DigitalChannel: u8 { 
-#[doc = "All flags set to `off`"]        
-    static DZero = 0,
+  flags DigitalChannel: u8 {
+#[doc = "All flags set to `off`"]
+    static DZERO = 0,
     static D1 = 1,
     static D2 = 2,
     static D3 = 4,
@@ -58,8 +58,8 @@ See the bitflags documentation for more information.
     static D6 = 32,
     static D7 = 64,
     static D8 = 128,
-#[doc = "All flags set to `on`"]        
-    static DAll = 255
+#[doc = "All flags set to `on`"]
+    static DALL = 255
   }
 )
 
@@ -70,20 +70,20 @@ Adresses of the different cards that can be controlled.
 See the jumper setting on your card for the correct address.
 "]
     flags CardAddress: uint {
-#[doc = "Use card `0x5500` (see jumper settings)"]        
-        static Card1 = 0x5500,
-#[doc = "Use card `0x5501` (see jumper settings)"]        
-        static Card2 = 0x5501,
-#[doc = "Use card `0x5502` (see jumper settings)"]        
-        static Card3 = 0x5502,
-#[doc = "Use card `0x5503` (see jumper settings)"]        
-        static Card4 = 0x5503,
-#[doc = "Automatically selects the first card found on the system"]        
-        static CardAny = 0x0
+#[doc = "Use card `0x5500` (see jumper settings)"]
+        static CARD_1 = 0x5500,
+#[doc = "Use card `0x5501` (see jumper settings)"]
+        static CARD_2 = 0x5501,
+#[doc = "Use card `0x5502` (see jumper settings)"]
+        static CARD_3 = 0x5502,
+#[doc = "Use card `0x5503` (see jumper settings)"]
+        static CARD_4 = 0x5503,
+#[doc = "Automatically selects the first card found on the system"]
+        static CARD_ANY = 0x0
     }
 )
 
-static VendorId: uint = 0x10cfu;
+static VENDOR_ID: uint = 0x10cfu;
 
 #[deriving(Show)]
 enum Packet {
@@ -103,7 +103,7 @@ struct State {
 pub struct K8055 {
     dev: usb::Device,
     hd: Option<usb::DeviceHandle>,
-    state: State    
+    state: State
 }
 
 impl K8055 {
@@ -111,7 +111,7 @@ impl K8055 {
     ///
     /// May return `None` if no card was found connected to the system.
     pub fn new() -> Option<K8055> {
-        K8055::new_addr(CardAny)
+        K8055::new_addr(CARD_ANY)
     }
 
     /// Create a new K8055 instance with a specific card address.
@@ -120,14 +120,14 @@ impl K8055 {
     /// with the address `addr` can be found connected to the system.
     pub fn new_addr(addr: CardAddress) -> Option<K8055> {
         let c = usb::Context::new();
-        let d = if addr == CardAny {
+        let d = if addr == CARD_ANY {
             K8055::find_any_k8055(&c)
         } else {
-            c.find_by_vid_pid(VendorId, addr.bits)
+            c.find_by_vid_pid(VENDOR_ID, addr.bits)
         };
-        
-        if d.is_some() { 
-            return Some(K8055{ dev: d.unwrap(), hd: None, state: Default::default() }) 
+
+        if d.is_some() {
+            return Some(K8055{ dev: d.unwrap(), hd: None, state: Default::default() })
         } else {
             return None
         }
@@ -141,22 +141,22 @@ impl K8055 {
       // device already open
       if self.hd.is_some() { return true }
       match self.dev.open() {
-          Ok(h) => {              
+          Ok(h) => {
               self.hd = Some(h);
               return true
           }
           Err(_) => return false
       }
     }
-   
+
     /// Set all analog and digital values to zero.
     pub fn reset(&mut self) -> bool {
         self.write(&SetAnalogDigital(0u8, 0u8, 0u8))
     }
 
-// digital    
+// digital
 
-    /// Write the digital value `d` to the outports. 
+    /// Write the digital value `d` to the outports.
     ///
     /// Leaves the analog values untouched. Returns `false` on failure.
     pub fn write_digital_out(&mut self, d: DigitalChannel) -> bool {
@@ -164,7 +164,7 @@ impl K8055 {
         self.write(p)
     }
 
-    /// Write the masked digital value `d` to the outports. 
+    /// Write the masked digital value `d` to the outports.
     ///
     /// Masks `d` with `mask` to only affect bits which are `on` in the mask.
     /// Leaves the analog values untouched. Returns `false` on failure.
@@ -176,7 +176,7 @@ impl K8055 {
     pub fn get_digital_out(&mut self) -> DigitalChannel {
         DigitalChannel::from_bits(self.state.dig).unwrap()
     }
-   
+
     /// Return the bits that are currently set on the digital out channel, masked with `mask`.
     pub fn get_digital_out_mask(&mut self, d: DigitalChannel) -> DigitalChannel {
         DigitalChannel::from_bits(self.state.dig).unwrap() & d
@@ -203,7 +203,7 @@ impl K8055 {
     }
 
 // analog
-    /// Write the analog value `a` to the given outport. 
+    /// Write the analog value `a` to the given outport.
     ///
     /// Leaves the digital values untouched. Returns `false` on failure.
     pub fn write_analog_out(&mut self, a: AnalogChannel) -> bool {
@@ -233,7 +233,7 @@ impl K8055 {
             _ => None
         }
     }
-    
+
     /// Read the analog channel 2 input value.
     ///
     /// Returns `None` on failure.
@@ -244,10 +244,10 @@ impl K8055 {
         }
     }
 
-// private 
+// private
     fn find_any_k8055(c: &usb::Context) -> Option<usb::Device> {
-        for pid in range_inclusive(Card1.bits, Card4.bits) {
-          let d = c.find_by_vid_pid(VendorId, pid);
+        for pid in range_inclusive(CARD_1.bits, CARD_4.bits) {
+          let d = c.find_by_vid_pid(VENDOR_ID, pid);
           if d.is_some() { return d }
         }
         None
@@ -261,7 +261,7 @@ impl K8055 {
                   Some(d) => d,
                   None => return false
               };
-              
+
               match hd.write(0x1, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, data) {
                   Ok(_) => {
                       // update the internal state on output changes
@@ -296,7 +296,7 @@ impl K8055 {
     fn encode(p: &Packet) -> Option<[u8, ..8]> {
       match *p {
           Reset => Some([0u8, ..8]),
-          SetAnalogDigital(dig, ana1, ana2) => Some([5u8, dig, ana1, ana2, 
+          SetAnalogDigital(dig, ana1, ana2) => Some([5u8, dig, ana1, ana2,
                                                      0u8, 0u8, 0u8, 0u8]),
           _ => None
       }
@@ -335,9 +335,9 @@ fn find_and_open() {
   assert!(k.is_some());
   let mut k = k.unwrap();
   assert!(k.open());
-  assert!(K8055::new_addr(Card2).is_none());
-  assert!(K8055::new_addr(Card3).is_none());
-  assert!(K8055::new_addr(Card4).is_none());
+  assert!(K8055::new_addr(CARD_2).is_none());
+  assert!(K8055::new_addr(CARD_3).is_none());
+  assert!(K8055::new_addr(CARD_4).is_none());
 }
 
 #[test()]
@@ -348,14 +348,14 @@ fn write_and_read_digital() {
   assert!(k.is_some());
   let mut k = k.unwrap();
   assert!(k.open());
-  assert!(k.get_digital_out() == DZero);
+  assert!(k.get_digital_out() == DZERO);
   for i in range(0u, 8) {
     assert!(k.write_digital_out(DigitalChannel::from_bits(1u8<<i).unwrap()));
     assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8<<i).unwrap());
     sleep(100);
   }
   assert!(k.reset());
-  assert!(k.get_digital_out() == DZero);
+  assert!(k.get_digital_out() == DZERO);
 
   assert!(k.write_digital_out_mask(D1 | D2 | D3, D2));
   assert!(k.get_digital_out() == D2);
@@ -381,5 +381,3 @@ fn write_and_read_analog() {
   assert!(k.reset());
   sleep(1000);
 }
-         
-

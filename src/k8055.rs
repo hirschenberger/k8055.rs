@@ -49,17 +49,17 @@ See the bitflags documentation for more information.
 "]
   flags DigitalChannel: u8 {
 #[doc = "All flags set to `off`"]
-    static DZERO = 0,
-    static D1 = 1,
-    static D2 = 2,
-    static D3 = 4,
-    static D4 = 8,
-    static D5 = 16,
-    static D6 = 32,
-    static D7 = 64,
-    static D8 = 128,
+    const DZERO = 0,
+    const D1 = 1,
+    const D2 = 2,
+    const D3 = 4,
+    const D4 = 8,
+    const D5 = 16,
+    const D6 = 32,
+    const D7 = 64,
+    const D8 = 128,
 #[doc = "All flags set to `on`"]
-    static DALL = 255
+    const DALL = 255
   }
 )
 
@@ -71,15 +71,15 @@ See the jumper setting on your card for the correct address.
 "]
     flags CardAddress: uint {
 #[doc = "Use card `0x5500` (see jumper settings)"]
-        static CARD_1 = 0x5500,
+        const CARD_1 = 0x5500,
 #[doc = "Use card `0x5501` (see jumper settings)"]
-        static CARD_2 = 0x5501,
+        const CARD_2 = 0x5501,
 #[doc = "Use card `0x5502` (see jumper settings)"]
-        static CARD_3 = 0x5502,
+        const CARD_3 = 0x5502,
 #[doc = "Use card `0x5503` (see jumper settings)"]
-        static CARD_4 = 0x5503,
+        const CARD_4 = 0x5503,
 #[doc = "Automatically selects the first card found on the system"]
-        static CARD_ANY = 0x0
+        const CARD_ANY = 0x0
     }
 )
 
@@ -313,7 +313,7 @@ impl K8055 {
       unsafe {
         if libusb::libusb_kernel_driver_active(hd.ptr(), 0) == 1 {
           if libusb::libusb_detach_kernel_driver(hd.ptr(), 0) != 0 {
-            fail!("Can't detach usb kernel driver");
+            panic!("Can't detach usb kernel driver");
           }
         }
       }

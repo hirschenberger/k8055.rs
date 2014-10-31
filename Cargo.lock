@@ -2,11 +2,11 @@
 name = "k8055"
 version = "0.0.1"
 dependencies = [
- "usb 0.1.0 (git+https://github.com/kevinmehall/rust-usb#b618addb4c6b7b650ded5dff0a51d257917685fb)",
+ "usb 0.1.0 (git+https://github.com/kevinmehall/rust-usb#2edfe6bfefccc22c9bad5a96d6a6634656b0a2fc)",
 ]
 
 [[package]]
 name = "usb"
 version = "0.1.0"
-source = "git+https://github.com/kevinmehall/rust-usb#b618addb4c6b7b650ded5dff0a51d257917685fb"
+source = "git+https://github.com/kevinmehall/rust-usb#2edfe6bfefccc22c9bad5a96d6a6634656b0a2fc"
 

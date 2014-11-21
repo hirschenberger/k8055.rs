@@ -6,7 +6,7 @@ fn main() {
   k.open();
 
   let mut n = 10u;
-  let mut old = k8055::DZero;
+  let mut old = k8055::DZERO;
   loop {
       if n == 0 { break; }
       let new = k.read_digital_in().unwrap();

@@ -26,7 +26,7 @@ extern crate usb;
 extern crate serialize;
 
 use std::iter::range_inclusive;
-use std::fmt::{Show, Formatter, FormatError};
+use std::fmt::{Show, Formatter, Error};
 use std::default::Default;
 use usb::libusb;
 
@@ -151,7 +151,7 @@ impl K8055 {
 
     /// Set all analog and digital values to zero.
     pub fn reset(&mut self) -> bool {
-        self.write(&SetAnalogDigital(0u8, 0u8, 0u8))
+        self.write(&Packet::SetAnalogDigital(0u8, 0u8, 0u8))
     }
 
 // digital
@@ -160,7 +160,7 @@ impl K8055 {
     ///
     /// Leaves the analog values untouched. Returns `false` on failure.
     pub fn write_digital_out(&mut self, d: DigitalChannel) -> bool {
-        let p = &SetAnalogDigital(d.bits, self.state.ana1, self.state.ana2);
+        let p = &Packet::SetAnalogDigital(d.bits, self.state.ana1, self.state.ana2);
         self.write(p)
     }
 
@@ -187,7 +187,7 @@ impl K8055 {
     /// Returns `None` on failure
     pub fn read_digital_in(&mut self) -> Option<DigitalChannel> {
         match self.read() {
-            Some(Status(dig, _, _, _)) => Some(DigitalChannel::from_bits(dig).unwrap()),
+            Some(Packet::Status(dig, _, _, _)) => Some(DigitalChannel::from_bits(dig).unwrap()),
             _ => None
         }
     }
@@ -208,20 +208,20 @@ impl K8055 {
     /// Leaves the digital values untouched. Returns `false` on failure.
     pub fn write_analog_out(&mut self, a: AnalogChannel) -> bool {
       let p = match a {
-          A1(v) => SetAnalogDigital(self.state.dig, v, self.state.ana2),
-          A2(v) => SetAnalogDigital(self.state.dig, self.state.ana1, v)
+          AnalogChannel::A1(v) => Packet::SetAnalogDigital(self.state.dig, v, self.state.ana2),
+          AnalogChannel::A2(v) => Packet::SetAnalogDigital(self.state.dig, self.state.ana1, v)
       };
       self.write(&p)
     }
 
     /// Return the analog channel 1 out value
     pub fn get_analog_out1(&mut self) -> AnalogChannel {
-        A1(self.state.ana1)
+        AnalogChannel::A1(self.state.ana1)
     }
 
     /// Return the analog channel 2 out value
     pub fn get_analog_out2(&mut self) -> AnalogChannel {
-        A2(self.state.ana2)
+        AnalogChannel::A2(self.state.ana2)
     }
 
     /// Read the analog channel 1 input value.
@@ -229,7 +229,7 @@ impl K8055 {
     /// Returns `None` on failure.
     pub fn read_analog_in1(&mut self) -> Option<AnalogChannel> {
         match self.read() {
-            Some(Status(_, _, a1, _)) => Some(A1(a1)),
+            Some(Packet::Status(_, _, a1, _)) => Some(AnalogChannel::A1(a1)),
             _ => None
         }
     }
@@ -239,7 +239,7 @@ impl K8055 {
     /// Returns `None` on failure.
     pub fn read_analog_in2(&mut self) -> Option<AnalogChannel> {
         match self.read() {
-            Some(Status(_, _, _, a2)) => Some(A2(a2)),
+            Some(Packet::Status(_, _, _, a2)) => Some(AnalogChannel::A2(a2)),
             _ => None
         }
     }
@@ -262,11 +262,11 @@ impl K8055 {
                   None => return false
               };
 
-              match hd.write(0x1, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, data) {
+              match hd.write(0x1, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, &data) {
                   Ok(_) => {
                       // update the internal state on output changes
                       match *p {
-                          SetAnalogDigital(d, a1, a2) => {
+                          Packet::SetAnalogDigital(d, a1, a2) => {
                               self.state = State{dig: d, ana1: a1, ana2: a2};
                           }
                           _ => ()
@@ -295,16 +295,16 @@ impl K8055 {
 
     fn encode(p: &Packet) -> Option<[u8, ..8]> {
       match *p {
-          Reset => Some([0u8, ..8]),
-          SetAnalogDigital(dig, ana1, ana2) => Some([5u8, dig, ana1, ana2,
-                                                     0u8, 0u8, 0u8, 0u8]),
+          Packet::Reset => Some([0u8, ..8]),
+          Packet::SetAnalogDigital(dig, ana1, ana2) => Some([5u8, dig, ana1, ana2,
+                                                             0u8, 0u8, 0u8, 0u8]),
           _ => None
       }
     }
 
     fn decode(d: &[u8]) -> Option<Packet> {
        match d {
-          [dig, st, ana1, ana2, _, _, _, _] => Some(Status(dig, st, ana1, ana2)),
+          [dig, st, ana1, ana2, _, _, _, _] => Some(Packet::Status(dig, st, ana1, ana2)),
           _ => None
        }
     }
@@ -323,7 +323,7 @@ impl K8055 {
 }
 
 impl Show for K8055 {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
       write!(f, "K8055( bus: {}, address: {} )", self.dev.bus(), self.dev.address())
     }
 }
@@ -343,6 +343,7 @@ fn find_and_open() {
 #[test()]
 fn write_and_read_digital() {
   use std::io::timer::sleep;
+  use std::time::duration::Duration;
 
   let k = K8055::new();
   assert!(k.is_some());
@@ -352,7 +353,7 @@ fn write_and_read_digital() {
   for i in range(0u, 8) {
     assert!(k.write_digital_out(DigitalChannel::from_bits(1u8<<i).unwrap()));
     assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8<<i).unwrap());
-    sleep(100);
+    sleep(Duration::milliseconds(100));
   }
   assert!(k.reset());
   assert!(k.get_digital_out() == DZERO);
@@ -360,24 +361,25 @@ fn write_and_read_digital() {
   assert!(k.write_digital_out_mask(D1 | D2 | D3, D2));
   assert!(k.get_digital_out() == D2);
   assert!(k.reset());
-  sleep(1000);
+  sleep(Duration::milliseconds(1000));
 }
 
 #[test()]
 fn write_and_read_analog() {
   use std::io::timer::sleep;
+  use std::time::duration::Duration;
 
   let k = K8055::new();
   assert!(k.is_some());
   let mut k = k.unwrap();
   assert!(k.open());
-  assert!(k.get_analog_out1() == A1(0u8));
-  assert!(k.get_analog_out2() == A2(0u8));
+  assert!(k.get_analog_out1() == AnalogChannel::A1(0u8));
+  assert!(k.get_analog_out2() == AnalogChannel::A2(0u8));
   for i in range(0u8, 255) {
-    assert!(k.write_analog_out(A1(i)));
-    assert!(k.write_analog_out(A2(255-i)));
-    sleep(10);
+    assert!(k.write_analog_out(AnalogChannel::A1(i)));
+    assert!(k.write_analog_out(AnalogChannel::A2(255-i)));
+    sleep(Duration::milliseconds(10));
   }
   assert!(k.reset());
-  sleep(1000);
+  sleep(Duration::milliseconds(1000));
 }

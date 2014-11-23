@@ -43,7 +43,7 @@ The digital channel values.
 
 Can be combined with bitoperations.
 
-    let dc = k8055::D1 & k8055::D2 & k8055::D3;
+    let dc = D1 & D2 & D3;
 
 See the bitflags documentation for more information.
 "]

@@ -31,7 +31,7 @@ use std::default::Default;
 use usb::libusb;
 
 /// Analog values in the range (0-255).
-#[deriving(PartialEq, PartialOrd, Show)]
+#[deriving(PartialEq, PartialOrd, Show, Copy)]
 pub enum AnalogChannel {
       A1(u8),
       A2(u8)

@@ -19,11 +19,13 @@
 //!
 //! See the Vellemann [Homepage](http://www.velleman.eu/products/view/?id=351346) for the
 //! hardware specification.
+#![feature(slicing_syntax)]
 
 #![crate_type = "lib"]
 extern crate libc;
 extern crate usb;
 extern crate serialize;
+
 
 use std::iter::range_inclusive;
 use std::fmt::{Show, Formatter, Error};
@@ -31,7 +33,7 @@ use std::default::Default;
 use usb::libusb;
 
 /// Analog values in the range (0-255).
-#[deriving(PartialEq, PartialOrd, Show, Copy)]
+#[derive(PartialEq, PartialOrd, Show, Copy)]
 pub enum AnalogChannel {
       A1(u8),
       A2(u8)
@@ -61,7 +63,7 @@ See the bitflags documentation for more information.
 #[doc = "All flags set to `on`"]
     const DALL = 255
   }
-)
+);
 
 bitflags!(
 #[doc = "
@@ -81,18 +83,18 @@ See the jumper setting on your card for the correct address.
 #[doc = "Automatically selects the first card found on the system"]
         const CARD_ANY = 0x0
     }
-)
+);
 
 static VENDOR_ID: uint = 0x10cfu;
 
-#[deriving(Show)]
+#[derive(Show)]
 enum Packet {
     Reset,
     SetAnalogDigital(u8, u8, u8),
     Status(u8, u8, u8, u8)
 }
 
-#[deriving(Default)]
+#[derive(Default)]
 struct State {
     dig: u8,
     ana1: u8,
@@ -262,7 +264,7 @@ impl K8055 {
                   None => return false
               };
 
-              match hd.write(0x1, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, &data) {
+              match hd.write(0x1, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, &data, 1000) {
                   Ok(_) => {
                       // update the internal state on output changes
                       match *p {
@@ -284,7 +286,7 @@ impl K8055 {
         match self.hd {
           Some(ref hd) => {
             K8055::detach_and_claim(hd);
-            match hd.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, 8) {
+            match hd.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_INTERRUPT, 8, 1000) {
               Ok(data) => K8055::decode(data.as_slice()),
               Err(_) => None
             }
@@ -293,9 +295,9 @@ impl K8055 {
         }
     }
 
-    fn encode(p: &Packet) -> Option<[u8, ..8]> {
+    fn encode(p: &Packet) -> Option<[u8; 8]> {
       match *p {
-          Packet::Reset => Some([0u8, ..8]),
+          Packet::Reset => Some([0u8; 8]),
           Packet::SetAnalogDigital(dig, ana1, ana2) => Some([5u8, dig, ana1, ana2,
                                                              0u8, 0u8, 0u8, 0u8]),
           _ => None

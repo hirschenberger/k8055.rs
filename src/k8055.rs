@@ -24,7 +24,7 @@
 #![crate_type = "lib"]
 extern crate libc;
 extern crate usb;
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 
 
 use std::iter::range_inclusive;
@@ -71,7 +71,7 @@ Adresses of the different cards that can be controlled.
 
 See the jumper setting on your card for the correct address.
 "]
-    flags CardAddress: uint {
+    flags CardAddress: u16 {
 #[doc = "Use card `0x5500` (see jumper settings)"]
         const CARD_1 = 0x5500,
 #[doc = "Use card `0x5501` (see jumper settings)"]
@@ -85,7 +85,7 @@ See the jumper setting on your card for the correct address.
     }
 );
 
-static VENDOR_ID: uint = 0x10cfu;
+static VENDOR_ID: u16 = 0x10cf;
 
 #[derive(Show)]
 enum Packet {
@@ -319,7 +319,7 @@ impl K8055 {
           }
         }
       }
-      hd.claim_interface(0u);
+      hd.claim_interface(0);
     }
 
 }
@@ -352,7 +352,7 @@ fn write_and_read_digital() {
   let mut k = k.unwrap();
   assert!(k.open());
   assert!(k.get_digital_out() == DZERO);
-  for i in range(0u, 8) {
+  for i in range(0us, 8) {
     assert!(k.write_digital_out(DigitalChannel::from_bits(1u8<<i).unwrap()));
     assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8<<i).unwrap());
     sleep(Duration::milliseconds(100));

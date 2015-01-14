@@ -17,3 +17,5 @@ name = "k8055"
 [dependencies]
 
 usb = "~0.1.0"
+
+rustc-serialize = "~0.2.7"

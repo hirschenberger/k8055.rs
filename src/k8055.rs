@@ -22,6 +22,8 @@
 #![feature(slicing_syntax)]
 
 #![crate_type = "lib"]
+
+#[macro_use] extern crate rustc_bitflags;
 extern crate libc;
 extern crate usb;
 extern crate "rustc-serialize" as rustc_serialize;

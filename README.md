@@ -3,7 +3,7 @@
 Rust support for the Vellemann K8055 IO Card
 
 [![Build Status](https://travis-ci.org/hirschenberger/k8055.rs.svg?branch=master)](https://travis-ci.org/hirschenberger/k8055.rs)
-[![](http://meritbadge.herokuapp.com/modbus)](https://crates.io/crates/k8055)
+[![](http://meritbadge.herokuapp.com/k8055)](https://crates.io/crates/k8055)
 [![License](http://img.shields.io/:license-MIT-blue.svg)](http://doge.mit-license.org)
 
 ## Testing

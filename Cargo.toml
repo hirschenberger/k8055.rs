@@ -7,7 +7,7 @@ homepage = "https://github.com/hirschenberger/k8055.rs"
 repository = "https://github.com/hirschenberger/k8055.rs.git"
 readme = "README.md"
 keywords = ["hardware", "usb", "IO"]
-license = "GPL-2.0"
+license = "MIT"
 
 [lib]
 name = "k8055"

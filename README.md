@@ -17,5 +17,5 @@ RUST_TEST_THREADS=1 cargo test
 ## License
 Copyright © 2015-2017 Falco Hirschenberger
 
-Distributed under the [GPL License](LICENSE).
+Distributed under the [MIT License](LICENSE).
 

@@ -8,7 +8,7 @@ Rust support for the Vellemann K8055 IO Card
 
 ## Testing
 
-To run the tests, attach your Vellemann k8055 card, jumpered as `CARD1`. You must run the tests without sequentially to avoid
+To run the tests, attach your Vellemann k8055 card, jumpered as `CARD1`. You must run the tests sequentially to avoid
 interrupting each other and return unexpected values:
 
 ```

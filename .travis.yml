@@ -10,6 +10,8 @@ rust:
   - nightly
 addons:
   apt:
+    sources:
+      - lucid
     packages:
       - libcurl4-openssl-dev
       - libelf-dev

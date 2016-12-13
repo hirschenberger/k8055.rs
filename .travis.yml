@@ -1,6 +1,7 @@
 env:
   global:
     - secure: LrKOXMj+T3fZ6v7o6VkS2wUeHXeqRF5OX00/WrUOPrUoK9RoTlNBPIgShsf1PMcCyVQhqtzVRJkTh/0SeZMmdfXUsO9fNiffqxDhjOdGUIHWrhIzFFlIjEvsbJYq8D+353B90ZzWajSu5uz9zsnytBxj4FDjIRXOi2tYt+jmmyY=
+dist: trusty
 sudo: false
 language: rust
 rust:

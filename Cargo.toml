@@ -1,19 +1,23 @@
 [package]
-name = "k8055"
-version = "0.1.0"
 authors = ["hirschen <falco.hirschenberger@gmail.com>"]
 description = "Rust support for the Vellemann K8055 USB IO Card"
 homepage = "https://github.com/hirschenberger/k8055.rs"
-repository = "https://github.com/hirschenberger/k8055.rs.git"
-readme = "README.md"
-keywords = ["hardware", "usb", "IO"]
+keywords = [
+    "hardware",
+    "usb",
+    "IO",
+]
 license = "GPL-2.0"
+name = "k8055"
+readme = "README.md"
+repository = "https://github.com/hirschenberger/k8055.rs.git"
+version = "0.2.0"
+
+[dependencies]
+bitflags = "1.0.1"
+error-chain = "0.11.0"
+libusb = "0.3.0"
+rustc-serialize = "0.3.24"
 
 [lib]
 name = "k8055"
-
-[dependencies]
-libusb = "~0.3"
-rustc-serialize = "~0.3"
-bitflags = "~0.3"
-error-chain = "~0.7"

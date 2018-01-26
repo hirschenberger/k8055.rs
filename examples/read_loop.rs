@@ -10,7 +10,7 @@ fn main() {
        Ok(ref mut k) => {
          k.open();
          let mut n = 10;
-         let mut old = k8055::DZERO;
+         let mut old = k8055::DigitalChannel::DZERO;
          loop {
              if n == 0 { break; }
              let new = k.read_digital_in().unwrap();

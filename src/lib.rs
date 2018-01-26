@@ -22,8 +22,10 @@
 
 #![crate_type = "lib"]
 
-#[macro_use] extern crate bitflags;
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate bitflags;
+#[macro_use]
+extern crate error_chain;
 extern crate libusb;
 extern crate rustc_serialize;
 
@@ -45,8 +47,8 @@ use errors::*;
 /// Analog values in the range (0-255).
 #[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
 pub enum AnalogChannel {
-      A1(u8),
-      A2(u8)
+    A1(u8),
+    A2(u8),
 }
 
 bitflags!(
@@ -59,19 +61,19 @@ Can be combined with bitoperations.
 
 See the bitflags documentation for more information.
 "]
-  flags DigitalChannel: u8 {
+  pub struct DigitalChannel: u8 {
 #[doc = "All flags set to `off`"]
-    const DZERO = 0,
-    const D1 = 1,
-    const D2 = 2,
-    const D3 = 4,
-    const D4 = 8,
-    const D5 = 16,
-    const D6 = 32,
-    const D7 = 64,
-    const D8 = 128,
+    const DZERO = 0;
+    const D1 = 1;
+    const D2 = 2;
+    const D3 = 4;
+    const D4 = 8;
+    const D5 = 16;
+    const D6 = 32;
+    const D7 = 64;
+    const D8 = 128;
 #[doc = "All flags set to `on`"]
-    const DALL = 255
+    const DALL = 255;
   }
 );
 
@@ -81,17 +83,17 @@ Adresses of the different cards that can be controlled.
 
 See the jumper setting on your card for the correct address.
 "]
-    flags CardAddress: u16 {
+    pub struct CardAddress: u16 {
 #[doc = "Use card `0x5500` (see jumper settings)"]
-        const CARD_1 = 0x5500,
+        const CARD_1 = 0x5500;
 #[doc = "Use card `0x5501` (see jumper settings)"]
-        const CARD_2 = 0x5501,
+        const CARD_2 = 0x5501;
 #[doc = "Use card `0x5502` (see jumper settings)"]
-        const CARD_3 = 0x5502,
+        const CARD_3 = 0x5502;
 #[doc = "Use card `0x5503` (see jumper settings)"]
-        const CARD_4 = 0x5503,
+        const CARD_4 = 0x5503;
 #[doc = "Automatically selects the first card found on the system"]
-        const CARD_ANY = 0x0
+        const CARD_ANY = 0x0;
     }
 );
 
@@ -100,66 +102,68 @@ const VENDOR_ID: u16 = 0x10cf;
 #[derive(Debug)]
 enum Packet {
     SetAnalogDigital(u8, u8, u8),
-    Status(u8, u8, u8, u8)
+    Status(u8, u8, u8, u8),
 }
 
 #[derive(Default)]
 struct State {
     dig: u8,
     ana1: u8,
-    ana2: u8
+    ana2: u8,
 }
 
 /// Object controlling one Vellemann K8055 card.
 pub struct K8055<'a> {
     dev: Option<Device<'a>>,
     hd: Option<DeviceHandle<'a>>,
-    state: State
+    state: State,
 }
 
 impl<'a> K8055<'a> {
     /// Create a new K8055 instance with the first card found on the system.
     ///
     /// May return `None` if no card was found connected to the system.
-    pub fn new<'b>(ctx: &'b mut Context) -> Result<K8055<'b>> {
-        K8055::new_addr(ctx, CARD_ANY)
+    pub fn new(ctx: &mut Context) -> Result<K8055> {
+        K8055::new_addr(ctx, CardAddress::CARD_ANY)
     }
 
     /// Create a new K8055 instance with a specific card address.
     ///
     /// See the hardware jumpers on the card for your card's address. May return `None` if no card
     /// with the address `addr` can be found connected to the system.
-    pub fn new_addr<'b>(ctx: &'b mut Context, addr: CardAddress) -> Result<K8055<'b>> {
+    pub fn new_addr(ctx: &mut Context, addr: CardAddress) -> Result<K8055> {
         let mut d = None;
         {
-        for dev in ctx.devices().unwrap().iter() {
-            let desc = try!(dev.device_descriptor()
-                                         .chain_err(|| "Unable to get device description"));
-            if addr == CARD_ANY {
-                if desc.vendor_id() == VENDOR_ID &&
-                   CARD_1.bits == desc.product_id() ||
-                   CARD_2.bits == desc.product_id() ||
-                   CARD_3.bits == desc.product_id() ||
-                   CARD_4.bits == desc.product_id() {
-                       d = Some(dev);
-                       break;
-                }
-            } else {
-                if desc.vendor_id() == VENDOR_ID &&
-                    addr.bits == desc.product_id() {
+            for dev in ctx.devices().unwrap().iter() {
+                let desc = try!(
+                    dev.device_descriptor()
+                        .chain_err(|| "Unable to get device description")
+                );
+                if addr == CardAddress::CARD_ANY {
+                    if desc.vendor_id() == VENDOR_ID
+                        && CardAddress::CARD_1.bits == desc.product_id()
+                        || CardAddress::CARD_2.bits == desc.product_id()
+                        || CardAddress::CARD_3.bits == desc.product_id()
+                        || CardAddress::CARD_4.bits == desc.product_id()
+                    {
+                        d = Some(dev);
+                        break;
+                    }
+                } else if desc.vendor_id() == VENDOR_ID && addr.bits == desc.product_id() {
                     d = Some(dev);
                     break;
                 }
             }
         }
-        }
         if d.is_some() {
-            let  k8055 =  K8055{ dev: d,
-                                 hd: None,
-                                 state: Default::default() };
-            return Ok(k8055)
+            let k8055 = K8055 {
+                dev: d,
+                hd: None,
+                state: Default::default(),
+            };
+            Ok(k8055)
         } else {
-            return Err(libusb::Error::NotFound.into())
+            Err(libusb::Error::NotFound.into())
         }
     }
 
@@ -168,15 +172,17 @@ impl<'a> K8055<'a> {
     /// Returns `true` if the device was successfully opened or is already open. Returns `false`
     /// if the device can't be opened.
     pub fn open(&mut self) -> bool {
-      // device already open
-      if self.hd.is_some() { return true }
-      match &mut self.dev {
-          &mut Some(ref mut d) => {
-              self.hd = d.open().ok();
-              true
-          }
-          &mut None => false
-      }
+        // device already open
+        if self.hd.is_some() {
+            return true;
+        }
+        match self.dev {
+            Some(ref mut d) => {
+                self.hd = d.open().ok();
+                true
+            }
+            None => false,
+        }
     }
 
     /// Set all analog and digital values to zero.
@@ -184,7 +190,7 @@ impl<'a> K8055<'a> {
         self.write(&Packet::SetAnalogDigital(0u8, 0u8, 0u8))
     }
 
-// digital
+    // digital
 
     /// Write the digital value `d` to the outports.
     ///
@@ -198,7 +204,11 @@ impl<'a> K8055<'a> {
     ///
     /// Masks `d` with `mask` to only affect bits which are `on` in the mask.
     /// Leaves the analog values untouched. Returns `false` on failure.
-    pub fn write_digital_out_mask(&mut self, d: DigitalChannel, mask: DigitalChannel) -> Result<()> {
+    pub fn write_digital_out_mask(
+        &mut self,
+        d: DigitalChannel,
+        mask: DigitalChannel,
+    ) -> Result<()> {
         self.write_digital_out(d & mask)
     }
 
@@ -229,20 +239,20 @@ impl<'a> K8055<'a> {
     pub fn read_digital_in_mask(&mut self, mask: DigitalChannel) -> Result<DigitalChannel> {
         match self.read_digital_in() {
             Ok(c) => Ok(c & mask),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
-// analog
+    // analog
     /// Write the analog value `a` to the given outport.
     ///
     /// Leaves the digital values untouched. Returns `false` on failure.
     pub fn write_analog_out(&mut self, a: AnalogChannel) -> Result<()> {
-      let p = match a {
-          AnalogChannel::A1(v) => Packet::SetAnalogDigital(self.state.dig, v, self.state.ana2),
-          AnalogChannel::A2(v) => Packet::SetAnalogDigital(self.state.dig, self.state.ana1, v)
-      };
-      self.write(&p)
+        let p = match a {
+            AnalogChannel::A1(v) => Packet::SetAnalogDigital(self.state.dig, v, self.state.ana2),
+            AnalogChannel::A2(v) => Packet::SetAnalogDigital(self.state.dig, self.state.ana1, v),
+        };
+        self.write(&p)
     }
 
     /// Return the analog channel 1 out value
@@ -277,51 +287,56 @@ impl<'a> K8055<'a> {
         }
     }
 
-// private
+    // private
     fn write(&mut self, p: &Packet) -> Result<()> {
         match self.hd {
-          Some(ref mut hd) => {
-              let _ = K8055::detach_and_claim(hd);
-              let data = try!(K8055::encode(p));
+            Some(ref mut hd) => {
+                let _ = K8055::detach_and_claim(hd);
+                let data = try!(K8055::encode(p));
 
-              try!(hd.write_interrupt(0x1, &data, Duration::from_millis(1000)));
-              // update the internal state on output changes
-              if let Packet::SetAnalogDigital(d, a1, a2) = *p {
-                  self.state = State{dig: d, ana1: a1, ana2: a2};
-                  Ok(())
-              } else {
-                  Err(libusb::Error::InvalidParam.into())
-              }
-          }
-          None => Err(libusb::Error::NoDevice.into())
+                try!(hd.write_interrupt(0x1, &data, Duration::from_millis(1000)));
+                // update the internal state on output changes
+                if let Packet::SetAnalogDigital(d, a1, a2) = *p {
+                    self.state = State {
+                        dig: d,
+                        ana1: a1,
+                        ana2: a2,
+                    };
+                    Ok(())
+                } else {
+                    Err(libusb::Error::InvalidParam.into())
+                }
+            }
+            None => Err(libusb::Error::NoDevice.into()),
         }
     }
 
     fn read(&mut self) -> Result<Packet> {
         match self.hd {
-          Some(ref mut hd) => {
-            let _ = K8055::detach_and_claim(hd);
-            let mut data = [0u8; 8];
-            try!(hd.read_interrupt(0x81, &mut data, Duration::from_millis(1000)));
-            K8055::decode(&data)
-          }
-          None => Err(libusb::Error::NoDevice.into())
+            Some(ref mut hd) => {
+                let _ = K8055::detach_and_claim(hd);
+                let mut data = [0u8; 8];
+                try!(hd.read_interrupt(0x81, &mut data, Duration::from_millis(1000)));
+                K8055::decode(&data)
+            }
+            None => Err(libusb::Error::NoDevice.into()),
         }
     }
 
     fn encode(p: &Packet) -> Result<[u8; 8]> {
-      match *p {
-          Packet::SetAnalogDigital(dig, ana1, ana2) => Ok([5u8, dig, ana1, ana2,
-                                                             0u8, 0u8, 0u8, 0u8]),
-          _ => Err(libusb::Error::InvalidParam.into())
-      }
+        match *p {
+            Packet::SetAnalogDigital(dig, ana1, ana2) => {
+                Ok([5u8, dig, ana1, ana2, 0u8, 0u8, 0u8, 0u8])
+            }
+            _ => Err(libusb::Error::InvalidParam.into()),
+        }
     }
 
     fn decode(d: &[u8]) -> Result<Packet> {
-       Ok(Packet::Status(d[0], d[1], d[2], d[3]))
+        Ok(Packet::Status(d[0], d[1], d[2], d[3]))
     }
 
-    fn detach_and_claim(hd: &mut DeviceHandle ) -> Result<()> {
+    fn detach_and_claim(hd: &mut DeviceHandle) -> Result<()> {
         try!(hd.kernel_driver_active(0));
         try!(hd.detach_kernel_driver(0));
         try!(hd.claim_interface(0));
@@ -331,59 +346,65 @@ impl<'a> K8055<'a> {
 
 #[test()]
 fn find_and_open() {
-  let mut ctx = libusb::Context::new().unwrap();
-  let mut k = K8055::new(&mut ctx).unwrap();
-  assert!(k.open());
+    let mut ctx = libusb::Context::new().unwrap();
+    let mut k = K8055::new(&mut ctx).unwrap();
+    assert!(k.open());
 
-  let mut ctx = libusb::Context::new().unwrap();
-  assert!(K8055::new_addr(&mut ctx, CARD_2).is_err());
-  assert!(K8055::new_addr(&mut ctx, CARD_3).is_err());
-  assert!(K8055::new_addr(&mut ctx, CARD_4).is_err());
+    let mut ctx = libusb::Context::new().unwrap();
+    assert!(K8055::new_addr(&mut ctx, CardAddress::CARD_2).is_err());
+    assert!(K8055::new_addr(&mut ctx, CardAddress::CARD_3).is_err());
+    assert!(K8055::new_addr(&mut ctx, CardAddress::CARD_4).is_err());
 }
 
 #[test()]
 fn write_and_read_digital() {
- use std::thread::sleep;
- use std::time::Duration;
+    use std::thread::sleep;
+    use std::time::Duration;
 
- let mut ctx = libusb::Context::new().unwrap();
- let k = K8055::new(&mut ctx);
- assert!(k.is_ok());
- let mut k = k.unwrap();
- assert!(k.open());
- assert!(k.get_digital_out() == DZERO);
- for i in 0 .. 7 {
-//    k.write_digital_out(D1).expect("DO");
-   assert!(k.write_digital_out(DigitalChannel::from_bits(1u8<<i).unwrap()).is_ok());
-   assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8<<i).unwrap());
-   sleep(Duration::from_millis(100));
- }
- assert!(k.reset().is_ok());
- assert!(k.get_digital_out() == DZERO);
+    let mut ctx = libusb::Context::new().unwrap();
+    let k = K8055::new(&mut ctx);
+    assert!(k.is_ok());
+    let mut k = k.unwrap();
+    assert!(k.open());
+    assert!(k.get_digital_out() == DigitalChannel::DZERO);
+    for i in 0..7 {
+        //    k.write_digital_out(D1).expect("DO");
+        assert!(
+            k.write_digital_out(DigitalChannel::from_bits(1u8 << i).unwrap())
+                .is_ok()
+        );
+        assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8 << i).unwrap());
+        sleep(Duration::from_millis(100));
+    }
+    assert!(k.reset().is_ok());
+    assert!(k.get_digital_out() == DigitalChannel::DZERO);
 
- assert!(k.write_digital_out_mask(D1 | D2 | D3, D2).is_ok());
- assert!(k.get_digital_out() == D2);
- assert!(k.reset().is_ok());
- sleep(Duration::from_millis(1000));
+    assert!(k.write_digital_out_mask(
+        DigitalChannel::D1 | DigitalChannel::D2 | DigitalChannel::D3,
+        DigitalChannel::D2
+    ).is_ok());
+    assert!(k.get_digital_out() == DigitalChannel::D2);
+    assert!(k.reset().is_ok());
+    sleep(Duration::from_millis(1000));
 }
 
 #[test()]
 fn write_and_read_analog() {
- use std::thread::sleep;
- use std::time::Duration;
+    use std::thread::sleep;
+    use std::time::Duration;
 
- let mut ctx = libusb::Context::new().unwrap();
- let k = K8055::new(&mut ctx);
- assert!(k.is_ok());
- let mut k = k.unwrap();
- assert!(k.open());
- assert!(k.get_analog_out1() == AnalogChannel::A1(0u8));
- assert!(k.get_analog_out2() == AnalogChannel::A2(0u8));
- for i in 0u8 .. 255 {
-   assert!(k.write_analog_out(AnalogChannel::A1(i)).is_ok());
-   assert!(k.write_analog_out(AnalogChannel::A2(255-i)).is_ok());
-   sleep(Duration::from_millis(10));
- }
- assert!(k.reset().is_ok());
- sleep(Duration::from_millis(1000));
+    let mut ctx = libusb::Context::new().unwrap();
+    let k = K8055::new(&mut ctx);
+    assert!(k.is_ok());
+    let mut k = k.unwrap();
+    assert!(k.open());
+    assert!(k.get_analog_out1() == AnalogChannel::A1(0u8));
+    assert!(k.get_analog_out2() == AnalogChannel::A2(0u8));
+    for i in 0u8..255 {
+        assert!(k.write_analog_out(AnalogChannel::A1(i)).is_ok());
+        assert!(k.write_analog_out(AnalogChannel::A2(255 - i)).is_ok());
+        sleep(Duration::from_millis(10));
+    }
+    assert!(k.reset().is_ok());
+    sleep(Duration::from_millis(1000));
 }

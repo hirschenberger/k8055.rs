@@ -1,9 +1,36 @@
-language: rust
 env:
   global:
     - secure: LrKOXMj+T3fZ6v7o6VkS2wUeHXeqRF5OX00/WrUOPrUoK9RoTlNBPIgShsf1PMcCyVQhqtzVRJkTh/0SeZMmdfXUsO9fNiffqxDhjOdGUIHWrhIzFFlIjEvsbJYq8D+353B90ZzWajSu5uz9zsnytBxj4FDjIRXOi2tYt+jmmyY=
+dist: precise
+sudo: false
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+addons:
+  apt:
+    sources:
+      - lucid
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - libusb1.0-0-dev
+matrix:
+  allow_failures:
+  - rust: nightly
+  
+before_script:
+- ! 'pip install ''travis-cargo<0.2'' --user && export PATH=$HOME/.local/bin:$PATH'
+
 script:
-  - cargo build
-  - rustdoc -L target/deps src/k8055.rs
-after_script:
-  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh    
+- ! 'travis-cargo build && travis-cargo --only stable doc'
+
+after_success:
+- travis-cargo --only stable doc-upload
+
+notifications:
+  email:
+    on_success: never
+  

@@ -11,7 +11,7 @@ license = "GPL-2.0"
 name = "k8055"
 readme = "README.md"
 repository = "https://github.com/hirschenberger/k8055.rs.git"
-version = "0.2.0"
+version = "0.2.1"
 
 [dependencies]
 bitflags = "1.1"

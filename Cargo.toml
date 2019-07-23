@@ -14,8 +14,8 @@ repository = "https://github.com/hirschenberger/k8055.rs.git"
 version = "0.2.0"
 
 [dependencies]
-bitflags = "1.0.1"
-error-chain = "0.11.0"
+bitflags = "1.1"
+error-chain = "0.12"
 libusb = "0.3.0"
 rustc-serialize = "0.3.24"
 

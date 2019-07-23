@@ -59,7 +59,7 @@ dependencies = [
 
 [[package]]
 name = "k8055"
-version = "0.2.1"
+version = "0.2.2-alpha.0"
 dependencies = [
  "bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",

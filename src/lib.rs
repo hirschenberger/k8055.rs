@@ -29,13 +29,13 @@ extern crate error_chain;
 extern crate libusb;
 extern crate rustc_serialize;
 
+use libusb::{Context, Device, DeviceHandle};
 use std::default::Default;
 use std::time::Duration;
-use libusb::{Context, Device, DeviceHandle};
 
 mod errors {
     use libusb;
-    error_chain!{
+    error_chain! {
         foreign_links {
              Usb(libusb::Error);
         }
@@ -45,7 +45,7 @@ mod errors {
 use errors::*;
 
 /// Analog values in the range (0-255).
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, PartialOrd, Debug, Copy, Clone)]
 pub enum AnalogChannel {
     A1(u8),
     A2(u8),
@@ -135,10 +135,9 @@ impl<'a> K8055<'a> {
         let mut d = None;
         {
             for dev in ctx.devices().unwrap().iter() {
-                let desc = try!(
-                    dev.device_descriptor()
-                        .chain_err(|| "Unable to get device description")
-                );
+                let desc = dev
+                    .device_descriptor()
+                    .chain_err(|| "Unable to get device description")?;
                 if addr == CardAddress::CARD_ANY {
                     if desc.vendor_id() == VENDOR_ID
                         && CardAddress::CARD_1.bits == desc.product_id()
@@ -292,9 +291,9 @@ impl<'a> K8055<'a> {
         match self.hd {
             Some(ref mut hd) => {
                 let _ = K8055::detach_and_claim(hd);
-                let data = try!(K8055::encode(p));
+                let data = K8055::encode(p)?;
 
-                try!(hd.write_interrupt(0x1, &data, Duration::from_millis(1000)));
+                hd.write_interrupt(0x1, &data, Duration::from_millis(1000))?;
                 // update the internal state on output changes
                 if let Packet::SetAnalogDigital(d, a1, a2) = *p {
                     self.state = State {
@@ -316,7 +315,7 @@ impl<'a> K8055<'a> {
             Some(ref mut hd) => {
                 let _ = K8055::detach_and_claim(hd);
                 let mut data = [0u8; 8];
-                try!(hd.read_interrupt(0x81, &mut data, Duration::from_millis(1000)));
+                hd.read_interrupt(0x81, &mut data, Duration::from_millis(1000))?;
                 K8055::decode(&data)
             }
             None => Err(libusb::Error::NoDevice.into()),
@@ -337,14 +336,14 @@ impl<'a> K8055<'a> {
     }
 
     fn detach_and_claim(hd: &mut DeviceHandle) -> Result<()> {
-        try!(hd.kernel_driver_active(0));
-        try!(hd.detach_kernel_driver(0));
-        try!(hd.claim_interface(0));
+        hd.kernel_driver_active(0)?;
+        hd.detach_kernel_driver(0)?;
+        hd.claim_interface(0)?;
         Ok(())
     }
 }
 
-#[test()]
+#[test]
 fn find_and_open() {
     let mut ctx = libusb::Context::new().unwrap();
     let mut k = K8055::new(&mut ctx).unwrap();
@@ -356,7 +355,7 @@ fn find_and_open() {
     assert!(K8055::new_addr(&mut ctx, CardAddress::CARD_4).is_err());
 }
 
-#[test()]
+#[test]
 fn write_and_read_digital() {
     use std::thread::sleep;
     use std::time::Duration;
@@ -369,26 +368,27 @@ fn write_and_read_digital() {
     assert!(k.get_digital_out() == DigitalChannel::DZERO);
     for i in 0..7 {
         //    k.write_digital_out(D1).expect("DO");
-        assert!(
-            k.write_digital_out(DigitalChannel::from_bits(1u8 << i).unwrap())
-                .is_ok()
-        );
+        assert!(k
+            .write_digital_out(DigitalChannel::from_bits(1u8 << i).unwrap())
+            .is_ok());
         assert!(k.get_digital_out() == DigitalChannel::from_bits(1u8 << i).unwrap());
         sleep(Duration::from_millis(100));
     }
     assert!(k.reset().is_ok());
     assert!(k.get_digital_out() == DigitalChannel::DZERO);
 
-    assert!(k.write_digital_out_mask(
-        DigitalChannel::D1 | DigitalChannel::D2 | DigitalChannel::D3,
-        DigitalChannel::D2
-    ).is_ok());
+    assert!(k
+        .write_digital_out_mask(
+            DigitalChannel::D1 | DigitalChannel::D2 | DigitalChannel::D3,
+            DigitalChannel::D2
+        )
+        .is_ok());
     assert!(k.get_digital_out() == DigitalChannel::D2);
     assert!(k.reset().is_ok());
     sleep(Duration::from_millis(1000));
 }
 
-#[test()]
+#[test]
 fn write_and_read_analog() {
     use std::thread::sleep;
     use std::time::Duration;
